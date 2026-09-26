@@ -2,7 +2,7 @@
   title: The triage agent
   description: >-
     Build the create_agent-based agent covering CAP-1 through CAP-4 and CAP-6:
-    the Gemini/Groq provider switch, tool-grounded lookup via mcp/triage_server.py,
+    OpenRouter model selection via MODEL/OPENROUTER_API_KEY, tool-grounded lookup via mcp/triage_server.py,
     TRIAGE_POLICY.md-driven structured output with retry-once-then-error, and
     ignoring instructions embedded in ticket text.
 - id: "2"

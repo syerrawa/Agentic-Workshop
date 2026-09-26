@@ -14,7 +14,7 @@ Then reopen your agent inside the new `Agentic-Workshop` folder and ask:
 
 If the answer ends with “— VSF”, your tool is reading `AGENTS.md` and you're ready.
 
-You need `uv`, `git`, Node 20.12 or newer, a GitHub account and a free Gemini API key. Copy `.env.example` to `.env` and paste your keys there. A Groq key is the backup for when Gemini's free tier runs out.
+You need `uv`, `git`, Node 20.12 or newer, a GitHub account and an OpenRouter API key. Copy `.env.example` to `.env` and paste your key there. The agent and the eval judge both run on OpenRouter; pick their models with `MODEL` and `JUDGE_MODEL`.
 
 ## Install BMad
 

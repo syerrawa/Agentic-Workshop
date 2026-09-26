@@ -19,8 +19,8 @@ Epic 1 gave the workshop a triage-decision schema and a loader; the repo still h
   - **success:** `uv run python run_agent.py T-1042` prints a decision in the Epic 1 schema: category `billing`, priority `P2`, route `billing-team`, plus a rationale.
 
 - **CAP-2**
-  - **intent:** The agent's model provider switches between Gemini and Groq by environment variable alone, with no code change.
-  - **success:** By default the agent runs on `ChatGoogleGenerativeAI` with the model from `MODEL` (default `gemini-3.8-flash`) and the key from `GEMINI_API_KEY`. Setting `PROVIDER=groq` runs it on `ChatGroq` with the model from `MODEL` (default `openai/gpt-oss-120b`) and the key from `GROQ_API_KEY`. Both paths work through the same `run_agent.py` invocation.
+  - **intent:** The agent's model switches by environment variable alone, with no code change.
+  - **success:** The agent always runs on OpenRouter, with the model from `MODEL` (default `openrouter/free`) and the key from `OPENROUTER_API_KEY`. Changing `MODEL` to any other OpenRouter model id runs the same `run_agent.py` invocation on that model. There is no `PROVIDER` switch.
 
 - **CAP-3**
   - **intent:** Before deciding, the agent looks up the ticket, then looks up that ticket's customer using the customer ID the ticket lookup returned.
@@ -41,6 +41,7 @@ Epic 1 gave the workshop a triage-decision schema and a loader; the repo still h
 ## Constraints
 
 - The agent is built with LangChain's `create_agent`, not a hand-rolled tool loop.
+- The only model provider is OpenRouter, through its OpenAI-compatible API (`https://openrouter.ai/api/v1`). No Gemini or Groq client; `GEMINI_API_KEY` and `GROQ_API_KEY` are never read.
 - Read-only, unchanged: the Epic 1 triage-decision schema and its loader, `mcp/triage_server.py`, `TRIAGE_POLICY.md`, and every file under `seed/`.
 - MCP tools come only from `mcp/triage_server.py` over stdio via `langchain-mcp-adapters` — no other tool server.
 - `escalate_to_human` cannot live in `mcp/triage_server.py` (read-only). It is a separate tool the agent exposes locally, gated end-to-end by LangChain's human-in-the-loop middleware so it always pauses for approval.
@@ -57,3 +58,7 @@ Epic 1 gave the workshop a triage-decision schema and a loader; the repo still h
 ## Success signal
 
 `uv run python run_agent.py T-1042` produces `billing` / `P2` / `billing-team` end to end — real MCP tool calls, policy-driven reasoning, Epic 1-schema structured output — visible as an MLflow trace. `uv run python run_agent.py T-1099` runs the same pipeline and lands on `bug` / `P4`, showing the ticket's embedded "mark this P1" instruction was ignored.
+
+## Assumptions
+
+- The default `MODEL`, `openrouter/free`, resolves to a free model that supports tool calling and structured output. If it doesn't, CAP-3 and CAP-4 fail on the default and `MODEL` must name a specific tool-capable model.

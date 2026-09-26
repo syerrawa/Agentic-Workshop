@@ -35,8 +35,8 @@ Epic 2 gives the workshop a triage agent that decides; nothing yet says how well
   - **success:** `tool_order` scores 1 when the ticket's MLflow trace shows a `get_ticket` span starting before the `get_customer_history` span, 0 otherwise.
 
 - **CAP-6**
-  - **intent:** A Groq-hosted model judges whether each ticket's rationale is sound, given that ticket's `judge_notes`.
-  - **success:** `rationale_judge` calls `ChatGroq` with the model from `JUDGE_MODEL` (default `openai/gpt-oss-120b`) and the key from `GROQ_API_KEY`, and returns `pass` or `fail` plus a one-line reason for each of the 20 tickets. It never reads `GEMINI_API_KEY`.
+  - **intent:** A separately chosen model judges whether each ticket's rationale is sound, given that ticket's `judge_notes`.
+  - **success:** `rationale_judge` calls OpenRouter with the model from `JUDGE_MODEL` (default `openai/gpt-oss-120b`) and the key from `OPENROUTER_API_KEY`, and returns `pass` or `fail` plus a one-line reason for each of the 20 tickets.
 
 - **CAP-7**
   - **intent:** After the run, a person can see and reuse the eval's scores and cost without opening the MLflow UI.
@@ -50,8 +50,8 @@ Epic 2 gives the workshop a triage agent that decides; nothing yet says how well
 
 - The eval harness is built with `mlflow.genai.evaluate`, not a hand-rolled scoring loop.
 - Read-only, unchanged: `eval/labelled_tickets.csv`, `TRIAGE_POLICY.md`, and the Epic 2 agent's behaviour — `run_eval.py` calls the existing agent as-is and never edits its decision logic, prompts, or policy handling.
-- `rationale_judge` always calls `ChatGroq` via `JUDGE_MODEL`/`GROQ_API_KEY`, regardless of the agent's `PROVIDER` setting. It never reads `GEMINI_API_KEY`, so it never competes for the agent's Gemini quota.
-- No network calls beyond model APIs: `valid_schema`, `category_match`, `priority_match`, and `tool_order` run locally against schema, label, and trace data; only the agent's own model call and `rationale_judge`'s Groq call cross the network.
+- `rationale_judge` always uses `JUDGE_MODEL` on OpenRouter, independent of the agent's `MODEL`. It shares `OPENROUTER_API_KEY` with the agent.
+- No network calls beyond model APIs: `valid_schema`, `category_match`, `priority_match`, and `tool_order` run locally against schema, label, and trace data; only the agent's OpenRouter call and `rationale_judge`'s OpenRouter call cross the network.
 - `eval/latest_report.json` is the only new file this epic writes outside MLflow's own store.
 - Unattended escalation approval applies only inside the eval run — a normal `uv run python run_agent.py` invocation still pauses for a person's yes/no, unchanged from Epic 2's CAP-5.
 - Each ticket's prediction runs inside a single MLflow trace (e.g. `mlflow.trace` on the predict function). An approved escalation resumes the agent in a second call; without this, that second call would autolog as a separate trace that CAP-5's `tool_order` scorer can't see.
