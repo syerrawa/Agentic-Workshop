@@ -33,7 +33,8 @@ TABLES = {
 
 
 def read_rows(csv_path: Path, columns: list[str]) -> list[dict]:
-    with csv_path.open(newline="", encoding="utf-8") as f:
+    # utf-8-sig also reads files saved with a BOM (Excel adds one), which would break the header check.
+    with csv_path.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         if reader.fieldnames != columns:
             raise ValueError(f"{csv_path.name}: expected columns {columns}, got {reader.fieldnames}")

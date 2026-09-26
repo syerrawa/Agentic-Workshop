@@ -43,3 +43,25 @@ context: ['{project-root}/_bmad-output/specs/spec-epic-1/SPEC.md']
 - low, rejected: a failed *first* load leaves an empty `app.db`, so the MCP server says "no such table" instead of "app.db not found". The seed is read-only and valid, so this needs a broken seed, and the fix (temp file plus replace, or cleanup) adds branches.
 - low, rejected: more header-mismatch cases (reordered, extra, missing, BOM) are untested. The check is exact list equality, so every variant fails the same way; the seed has no BOM.
 - false: the story file is incomplete (`in-progress`, no triage log). That was the correct state mid-workflow; the spec is finalized in this step.
+
+### Review Findings
+
+Code review (2026-09-26), `main...story/sachin-1.2`: Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor. There were 23 raw findings, grouped into 2 patches; 0 need a decision, 0 are deferred and 19 were rejected. The Acceptance Auditor found no violations of the acceptance criteria.
+
+- [x] [Review][Patch] No test pins that the loader's default `APP_DB` is the file `mcp/triage_server.py` reads (`DB_PATH`). Every test injects both paths, so changing `APP_DB` (e.g. to a path relative to the working directory) keeps all 52 tests green while the real command writes a database the server never sees. Add a test comparing `load_seed.APP_DB` with the unpatched `DB_PATH`. (Verification Gap, with the Acceptance Auditor's "the command has no test" note) [tests/test_load_seed.py:32]
+- [x] [Review][Patch] A CSV saved with a UTF-8 BOM (Excel does this) fails the header check with a confusing `'﻿ticket_id'` message. Open it with `encoding="utf-8-sig"`. (Edge Case Hunter + Blind Hunter) [load_seed.py:42]
+
+#### Rejected
+
+- false: a missing parent folder for `db_path` gives an unclear error. The default path is the repo root, which always exists; only a test can pass another path.
+- false: a missing seed file gives a bare traceback. `FileNotFoundError` names the full path and nothing is loaded, which is the correct loud failure. The request to test it is rejected on the same grounds.
+- false: a rebuild leaves other tables in `app.db`, so it is "not the same database". CAP-3 is about the rows in `tickets` and `customers`, and those are rebuilt exactly.
+- low, rejected: empty values (`""` IDs, blank text), IDs with spaces around them, negative or `2.0` `open_tickets`, and header-only or empty CSVs are accepted. The seed is read-only and clean, and each guard adds a branch. Flagged by the Edge Case Hunter and the Blind Hunter.
+- low, rejected: the loader doesn't check for tickets with no matching customer. `test_every_ticket_has_a_customer` loads the real seed, so a seed edit that adds an orphan fails the suite. Flagged by the Edge Case Hunter and the Blind Hunter.
+- low, rejected: duplicate-ID and non-integer errors come out as a raw `IntegrityError` with no CSV line. The message still names `table.column`, and wrapping it adds a try/except for a read-only seed.
+- low, rejected: `main()` shows a traceback rather than a friendly message. It fails loudly, which is fine for a one-shot setup command.
+- low, rejected: `app.db` could be locked by another process during a load. The MCP server opens a connection only for the length of each query.
+- low, rejected: the malformed-row tests expect "line 22", so they depend on the seed's line count and its trailing newline. The seed is read-only and ends with a newline. Flagged by the Edge Case Hunter and the Blind Hunter.
+- low, rejected: the row counts are hard-coded as 24 and 20. This is deliberate: the story pins those seed facts, and the other test also compares against a CSV count. Flagged by the Edge Case Hunter, the Blind Hunter and the Acceptance Auditor.
+- low, rejected: a failed *first* load leaves an empty `app.db`. The earlier triage already rejected this (Acceptance Auditor note).
+- low, rejected: no test covers a quoted, multi-line or comma-containing `text` field. That parsing is stdlib `csv` behaviour, not loader code.

@@ -28,14 +28,25 @@ def db(tmp_path):
     return db_path
 
 
-@pytest.fixture
-def triage_server(db, monkeypatch):
+def load_triage_server():
     # `import mcp` finds the installed MCP SDK, so load the local server by path.
     spec = importlib.util.spec_from_file_location("triage_server", ROOT / "mcp" / "triage_server.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def triage_server(db, monkeypatch):
+    module = load_triage_server()
     monkeypatch.setattr(module, "DB_PATH", db)
     return module
+
+
+def test_loader_writes_the_database_the_mcp_server_reads(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert load_seed.APP_DB == load_triage_server().DB_PATH
+    assert load_seed.load.__defaults__[0] == load_seed.APP_DB
 
 
 def test_row_counts_match_the_csvs(db):
@@ -106,6 +117,14 @@ def test_malformed_row_is_rejected_by_file_and_line(tmp_path, bad_row, error):
         f.write(bad_row)
     with pytest.raises(ValueError, match=error):
         load_seed.load(tmp_path / "app.db", seed_dir)
+
+
+def test_csv_with_a_bom_is_accepted(tmp_path):
+    seed_dir = tmp_path / "seed"
+    shutil.copytree(load_seed.SEED_DIR, seed_dir)
+    customers = seed_dir / "customers.csv"
+    customers.write_bytes(b"\xef\xbb\xbf" + customers.read_bytes())
+    assert load_seed.load(tmp_path / "app.db", seed_dir) == {"tickets": 24, "customers": 20}
 
 
 def test_non_integer_open_tickets_is_rejected(tmp_path):
