@@ -4,10 +4,12 @@ version = "0.1.0"
 description = "VSF Club Agentic AI Workshop: a support-ticket triage agent built spec-first with BMad."
 requires-python = ">=3.12"
 dependencies = [
+    "httpx>=0.28.1",
     "langchain>=1.0",
     "langchain-google-genai>=2.1",
     "langchain-groq>=0.3",
     "langchain-mcp-adapters>=0.1",
+    "langchain-openai>=1.6.6",
     "mcp>=1.9",
     "mlflow>=3.4",
     "pydantic>=2.8",
