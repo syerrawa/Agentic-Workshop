@@ -1,0 +1,23 @@
+- id: "1"
+  title: Triage decision schema
+  description: >-
+    Build the triage-decision schema (CAP-1): exactly category, priority, route
+    and a non-empty rationale, with fixed value sets, rejecting anything else
+    with an error that names the field. Covered by offline tests.
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Use pydantic (already a dependency) and forbid extra fields. Epics 2 and 3
+    import this schema, so keep it in one importable module.
+- id: "2"
+  title: Seed loader
+  description: >-
+    Build load_seed.py (CAP-2, CAP-3): load seed/tickets.csv and
+    seed/customers.csv into app.db as tickets and customers with the CSV
+    columns, giving the same database on every run.
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Use only the stdlib csv and sqlite3 modules; add no dependencies. Drop and
+    recreate both tables on each run. Tests must confirm the queries in
+    mcp/triage_server.py return rows (e.g. T-1042).
