@@ -30,5 +30,5 @@ A support-ticket triage agent built spec-first with BMad: a LangChain agent call
 
 ## Models
 
-- Agent: Gemini through `ChatGoogleGenerativeAI`. Model from `MODEL` (default `gemini-3.8-flash`), key from `GEMINI_API_KEY`.
-- Backup and judge: Groq through `ChatGroq`. Set `PROVIDER=groq` to run the agent on Groq. Judge model from `JUDGE_MODEL` (default `openai/gpt-oss-120b`), key from `GROQ_API_KEY`.
+- Agent: OpenRouter through its OpenAI-compatible API (`https://openrouter.ai/api/v1`). Model from `MODEL` (default `openrouter/free`), key from `OPENROUTER_API_KEY`.
+- Judge: OpenRouter too, with the model from `JUDGE_MODEL` (default `openai/gpt-oss-120b`) and the same `OPENROUTER_API_KEY`.

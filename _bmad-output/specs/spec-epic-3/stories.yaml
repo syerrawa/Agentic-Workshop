@@ -9,7 +9,7 @@
 - id: "2"
   title: The rationale judge and the report
   description: >-
-    Add the rationale_judge scorer, calling ChatGroq with JUDGE_MODEL/GROQ_API_KEY
-    and never GEMINI_API_KEY (CAP-6). Print the mean of all five scorers, the
+    Add the rationale_judge scorer, calling OpenRouter with JUDGE_MODEL/OPENROUTER_API_KEY,
+    independent of the agent's MODEL (CAP-6). Print the mean of all five scorers, the
     agent's total tokens, and the escalation count, and write the same numbers
     to eval/latest_report.json (CAP-7).
