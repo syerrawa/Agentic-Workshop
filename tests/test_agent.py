@@ -235,3 +235,155 @@ def test_several_decisions_in_one_message_twice_raise():
     model = ScriptedModel(steps=[ticket(), history_from_ticket, several(1), several(2)])
     with pytest.raises(RuntimeError, match="several TriageDecision outputs"):
         run(model)
+
+
+# --- Story 2.2: human-gated escalation ---
+
+T1044 = {"category": "access", "priority": "P1", "route": "access-team", "rationale": "Whole team locked out: P1, Enterprise, escalated."}
+REASON = "P1 and the customer is on the Enterprise plan."
+
+
+def escalate(ticket_id: str = "T-1044", reason: str = REASON) -> AIMessage:
+    return _call("escalate_to_human", {"ticket_id": ticket_id, "reason": reason}, "call-escalate")
+
+
+def escalation_script() -> list:
+    return [ticket("T-1044"), history_from_ticket, escalate(), decide(T1044)]
+
+
+def run_escalation(model, approve, ticket_id: str = "T-1044") -> tuple[dict, bool]:
+    return asyncio.run(agent.triage_with_escalation(ticket_id, model=model, approve=approve))
+
+
+def escalation_result(model) -> ToolMessage:
+    return next(m for m in model.seen if isinstance(m, ToolMessage) and m.name == "escalate_to_human")
+
+
+def test_an_approved_escalation_is_reported_as_escalated_with_a_valid_decision():
+    model = ScriptedModel(steps=escalation_script())
+    decision, escalated = run_escalation(model, approve=lambda req: True)
+    assert escalated is True
+    assert TriageDecision.model_validate(decision).model_dump() == decision == T1044
+    assert escalation_result(model).status == "success"
+    assert "Escalated T-1044" in escalation_result(model).content
+
+
+def test_a_rejected_escalation_still_returns_the_decision_but_not_escalated():
+    model = ScriptedModel(steps=escalation_script())
+    decision, escalated = run_escalation(model, approve=lambda req: False)
+    assert escalated is False
+    assert decision == T1044
+    rejection = escalation_result(model)
+    assert rejection.status == "error"
+    assert "did not approve" in rejection.content
+
+
+@pytest.mark.parametrize("answer", [None, "yes", 1, "True"])
+def test_only_an_approver_returning_true_approves(answer):
+    model = ScriptedModel(steps=escalation_script())
+    _, escalated = run_escalation(model, approve=lambda req: answer)
+    assert escalated is False
+
+
+def test_a_p2_ticket_never_calls_the_approver():
+    def approve(req):
+        raise AssertionError("the approver must not be called")
+
+    model = ScriptedModel(steps=[ticket(), history_from_ticket, decide(T1042)])
+    assert run_escalation(model, approve=approve, ticket_id="T-1042") == (T1042, False)
+
+
+def test_triage_returns_only_the_decision_and_passes_the_approver_through():
+    model = ScriptedModel(steps=escalation_script())
+    assert asyncio.run(agent.triage("T-1044", model=model, approve=lambda req: True)) == T1044
+
+
+def test_the_approver_sees_the_ticket_id_and_the_reason():
+    seen = []
+    model = ScriptedModel(steps=escalation_script())
+    run_escalation(model, approve=lambda req: seen.append(req) or True)
+    assert len(seen) == 1
+    assert seen[0]["ticket_id"] == "T-1044"
+    assert seen[0]["reason"] == REASON
+    assert seen[0]["action"]["name"] == "escalate_to_human"
+
+
+def test_the_default_approver_asks_at_the_terminal(monkeypatch):
+    answers = iter(["maybe", "YES"])
+    monkeypatch.setattr("builtins.input", lambda *prompt: next(answers))
+    model = ScriptedModel(steps=escalation_script())
+    assert run_escalation(model, approve=None) == (T1044, True)
+
+
+def test_the_default_approver_treats_eof_as_no(monkeypatch):
+    def eof(*prompt):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", eof)
+    model = ScriptedModel(steps=escalation_script())
+    assert run_escalation(model, approve=None) == (T1044, False)
+
+
+def test_the_escalation_gate_allows_only_approve_and_reject():
+    gate = agent.build_escalation_gate()
+    assert gate.interrupt_on == {"escalate_to_human": {"allowed_decisions": ["approve", "reject"]}}
+
+
+def test_the_prompt_tells_the_model_when_to_escalate():
+    prompt = agent.build_system_prompt()
+    assert "escalate_to_human" in agent.AGENT_RULES and "escalate_to_human" in prompt
+    assert "P1" in agent.AGENT_RULES and "Enterprise" in agent.AGENT_RULES
+
+
+def _grounding_messages(escalation: AIMessage) -> list:
+    return [
+        ticket("T-1044"),
+        ToolMessage(content=json.dumps({"ticket_id": "T-1044", "customer_id": "C-91"}), tool_call_id="call-ticket", name="get_ticket"),
+        _call("get_customer_history", {"customer_id": "C-91"}, "call-history"),
+        ToolMessage(content=json.dumps({"customer_id": "C-91", "plan": "Enterprise"}), tool_call_id="call-history", name="get_customer_history"),
+        escalation,
+        ToolMessage(content="Escalated", tool_call_id="call-escalate", name="escalate_to_human"),
+        decide(T1044),
+    ]
+
+
+def test_grounding_accepts_ticket_then_history_then_escalate_then_decision():
+    agent._check_grounded("T-1044", _grounding_messages(escalate()))
+
+
+def test_grounding_rejects_an_escalation_for_another_ticket():
+    with pytest.raises(RuntimeError, match="not grounded.*escalate_to_human"):
+        agent._check_grounded("T-1044", _grounding_messages(escalate("T-1048")))
+
+
+def test_an_escalation_before_the_customer_lookup_is_not_grounded():
+    model = ScriptedModel(steps=[ticket("T-1044"), escalate(), history_from_ticket, decide(T1044)])
+    with pytest.raises(RuntimeError, match="not grounded.*before get_customer_history"):
+        run_escalation(model, approve=lambda req: True)
+
+
+def test_resuming_an_escalation_does_not_spend_the_retry_budget():
+    bad = {**T1044, "priority": "urgent"}
+    model = ScriptedModel(steps=[ticket("T-1044"), history_from_ticket, escalate(), decide(bad, "bad-1"), decide(T1044)])
+    assert run_escalation(model, approve=lambda req: True) == (T1044, True)
+
+
+def test_a_text_answer_after_an_escalation_is_retried_once():
+    model = ScriptedModel(steps=[*escalation_script()[:3], text("It is access, P1."), decide(T1044)])
+    assert run_escalation(model, approve=lambda req: False) == (T1044, False)
+
+
+@pytest.mark.parametrize("answer", ["no", "n", "NO"])
+def test_the_default_approver_rejects_an_explicit_no(monkeypatch, answer):
+    monkeypatch.setattr("builtins.input", lambda *prompt: answer)
+    model = ScriptedModel(steps=escalation_script())
+    assert run_escalation(model, approve=None) == (T1044, False)
+
+
+def test_a_second_escalation_request_raises_without_asking_again():
+    asked = []
+    again = _call("escalate_to_human", {"ticket_id": "T-1044", "reason": REASON}, "call-escalate-2")
+    model = ScriptedModel(steps=[*escalation_script()[:3], again, decide(T1044)])
+    with pytest.raises(RuntimeError, match="T-1044.*escalate_to_human requested more than once"):
+        run_escalation(model, approve=lambda req: asked.append(req) or False)
+    assert len(asked) == 1
