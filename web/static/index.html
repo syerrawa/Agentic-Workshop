@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ticket Triage Chat</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#message">Skip to message box</a>
+  <div class="app">
+    <header class="app-header">
+      <h1>Ticket Triage Assistant</h1>
+      <p class="subtitle">Ask about support tickets in plain language, or send a ticket ID to triage it.</p>
+    </header>
+
+    <main class="chat">
+      <div id="transcript" class="transcript" role="log" aria-live="polite"
+           aria-relevant="additions" aria-label="Conversation">
+        <div class="msg msg-bot">
+          <div class="bubble">
+            <p>Hi! Ask me about existing support tickets in plain language, for example
+              "triage the SSO lockout ticket" or "anything urgent from Hooli?". You can also
+              send a ticket ID like <strong>T-1042</strong>. Triage gives a category, priority,
+              route and a short rationale, and I'll ask you before escalating anything to a human.</p>
+            <div class="chips" role="group" aria-label="Example requests">
+              <button type="button" class="chip" data-prompt="Triage the SSO lockout ticket">Triage the SSO lockout ticket</button>
+              <button type="button" class="chip" data-prompt="Anything urgent from Hooli?">Anything urgent from Hooli?</button>
+              <button type="button" class="chip" data-prompt="Is T-1042 about billing?">Is T-1042 about billing?</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <form id="composer" class="composer" autocomplete="off">
+      <label for="message" class="visually-hidden">Message</label>
+      <input id="message" name="message" type="text" maxlength="500"
+             placeholder="Ask about tickets, or send an ID" required>
+      <button id="send" type="submit">Send</button>
+    </form>
+  </div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

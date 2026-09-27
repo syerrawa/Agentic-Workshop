@@ -13,6 +13,7 @@ name = "agentic-workshop"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "httpx" },
     { name = "langchain" },
     { name = "langchain-google-genai" },
@@ -23,6 +24,7 @@ dependencies = [
     { name = "mlflow" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -32,6 +34,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fastapi", specifier = ">=0.141.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", specifier = ">=1.0" },
     { name = "langchain-google-genai", specifier = ">=2.1" },
@@ -42,6 +45,7 @@ requires-dist = [
     { name = "mlflow", specifier = ">=3.4" },
     { name = "pydantic", specifier = ">=2.8" },
     { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "uvicorn", specifier = ">=0.53.0" },
 ]
 
 [package.metadata.requires-dev]
