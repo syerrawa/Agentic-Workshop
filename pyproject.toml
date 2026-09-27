@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "VSF Club Agentic AI Workshop: a support-ticket triage agent built spec-first with BMad."
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "langchain>=1.0",
     "langchain-google-genai>=2.1",
@@ -14,6 +15,7 @@ dependencies = [
     "mlflow>=3.4",
     "pydantic>=2.8",
     "python-dotenv>=1.0",
+    "uvicorn>=0.53.0",
 ]
 
 [dependency-groups]
